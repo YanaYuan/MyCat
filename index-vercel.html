@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🐱 考拉的回忆</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            /* 移动端优化 */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            
+            /* 禁止滚动 */
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            
+            /* 强制横屏显示 */
+            transform-origin: left top;
+            transition: transform 0.3s ease;
+        }
+
+        /* 竖屏时的提示 */
+        .orientation-notice {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            color: white;
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .orientation-notice .icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: rotate 2s infinite linear;
+        }
+
+        .orientation-notice .text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .orientation-notice .subtext {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 媒体查询：检测设备方向 */
+        @media screen and (orientation: portrait) and (max-width: 768px) {
+            .orientation-notice {
+                display: flex;
+            }
+            
+            .video-container,
+            .time-controller,
+            .meow-text,
+            .heart-icon {
+                display: none;
+            }
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #mainVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        video::-webkit-media-controls {
+            display: none !important;
+        }
+        
+        video::-webkit-media-controls-enclosure {
+            display: none !important;
+        }
+
+        /* "喵？"文字效果 */
+        .meow-text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: "Courier New", "Consolas", "微软雅黑", "SimHei", monospace;
+            z-index: 200;
+            opacity: 0;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+            animation: none;
+            pointer-events: none;
+            font-weight: 300;
+            letter-spacing: 3px;
+        }
+
+        @keyframes meowAppear {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes meowDisappear {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.98);
+            }
+        }
+
+        /* 红心效果 */
+        .heart-icon {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            color: #ff6b6b;
+            z-index: 200;
+            opacity: 0;
+            animation: none;
+            pointer-events: none;
+            text-shadow: 0 0 15px rgba(255, 107, 107, 0.4);
+        }
+
+        @keyframes heartAppear {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes heartDisappear {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+        }
+
+        /* 时间光线控制器 */
+        .time-controller {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .time-controller.show {
+            opacity: 1;
+        }
+
+        .time-slider {
+            width: 240px;
+            height: 8px;
+            background: linear-gradient(to right, 
+                #1a1a2e 0%,     /* 深夜 */
+                #ff6b35 12.5%,  /* 日出 */
+                #ffd700 25%,    /* 晨光 */
+                #87ceeb 50%,    /* 正午 */
+                #ffa500 75%,    /* 傍晚 */
+                #4169e1 87.5%,  /* 黄昏 */
+                #1a1a2e 100%);  /* 夜晚 */
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .time-handle {
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            position: absolute;
+            top: -8px;
+            cursor: grab;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s ease;
+        }
+
+        .time-handle:hover {
+            transform: scale(1.1);
+        }
+
+        .time-handle:active {
+            cursor: grabbing;
+        }
+
+        .time-label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .time-display {
+            color: rgba(255, 255, 255, 1);
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .time-icons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 16px;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .time-controller {
+                transform: scale(0.8);
+                top: 15px;
+                right: 15px;
+            }
+            
+            .time-slider {
+                width: 180px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .time-controller {
+                transform: scale(0.7);
+                top: 10px;
+                right: 10px;
+            }
+            
+            .time-slider {
+                width: 150px;
+            }
+        }
+        
+        /* 触摸设备优化 */
+        @media (hover: none) and (pointer: coarse) {
+            .time-handle {
+                width: 24px;
+                height: 24px;
+                opacity: 0.9;
+            }
+            
+            .time-slider {
+                height: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 横屏提示 -->
+    <div class="orientation-notice">
+        <div class="icon">📱</div>
+        <div class="text">请旋转设备到横屏模式</div>
+        <div class="subtext">为了更好的观看体验</div>
+    </div>
+
+    <!-- 视频容器 -->
+    <div class="video-container">
+        <video id="mainVideo" autoplay muted loop playsinline webkit-playsinline>
+            <source src="lying.mp4" type="video/mp4">
+            您的浏览器不支持视频播放。
+        </video>
+    </div>
+
+    <!-- "喵？"文字 -->
+    <div class="meow-text" id="meowText">喵？</div>
+
+    <!-- 红心图标 -->
+    <div class="heart-icon" id="heartIcon">
+        <i class="fas fa-heart"></i>
+    </div>
+
+    <!-- 时间控制器 -->
+    <div class="time-controller" id="timeController">
+        <div class="time-slider" id="timeSlider">
+            <div class="time-handle" id="timeHandle"></div>
+        </div>
+        <div class="time-label">
+            <div class="time-display" id="timeDisplay">12:00</div>
+            <div class="time-icons">
+                <span>🌙</span>
+                <span>🌅</span>
+                <span>☀️</span>
+                <span>🌇</span>
+                <span>🌙</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('mainVideo');
+        const meowText = document.getElementById('meowText');
+        const heartIcon = document.getElementById('heartIcon');
+        const timeController = document.getElementById('timeController');
+        const timeSlider = document.getElementById('timeSlider');
+        const timeHandle = document.getElementById('timeHandle');
+        const timeDisplay = document.getElementById('timeDisplay');
+
+        let isMainVideo = true;
+        let isControllerVisible = false;
+        let currentTime = 12;
+
+        // 时间映射到光照效果
+        function getTimeStyle(hour) {
+            const timePoints = [
+                { time: 0,  brightness: 0.3, hue: 240, saturation: 1.2, sepia: 0.1, contrast: 0.8 },
+                { time: 6,  brightness: 0.6, hue: 30,  saturation: 1.0, sepia: 0.2, contrast: 1.0 },
+                { time: 12, brightness: 1.0, hue: 0,   saturation: 1.0, sepia: 0.0, contrast: 1.1 },
+                { time: 18, brightness: 0.7, hue: 15,  saturation: 1.1, sepia: 0.3, contrast: 1.0 },
+                { time: 24, brightness: 0.3, hue: 240, saturation: 1.2, sepia: 0.1, contrast: 0.8 }
+            ];
+
+            // 插值计算
+            for (let i = 0; i < timePoints.length - 1; i++) {
+                const current = timePoints[i];
+                const next = timePoints[i + 1];
+                
+                if (hour >= current.time && hour <= next.time) {
+                    const progress = (hour - current.time) / (next.time - current.time);
+                    
+                    return {
+                        brightness: current.brightness + (next.brightness - current.brightness) * progress,
+                        hue: current.hue + (next.hue - current.hue) * progress,
+                        saturation: current.saturation + (next.saturation - current.saturation) * progress,
+                        sepia: current.sepia + (next.sepia - current.sepia) * progress,
+                        contrast: current.contrast + (next.contrast - current.contrast) * progress
+                    };
+                }
+            }
+            
+            return timePoints[0];
+        }
+
+        // 应用时间光照效果
+        function applyTimeFilter(hour) {
+            const style = getTimeStyle(hour);
+            video.style.filter = `
+                brightness(${style.brightness}) 
+                hue-rotate(${style.hue}deg) 
+                saturate(${style.saturation}) 
+                sepia(${style.sepia}) 
+                contrast(${style.contrast})
+            `;
+        }
+
+        // 设置时间
+        function setTime(hour) {
+            currentTime = Math.max(0, Math.min(24, hour));
+            const percentage = currentTime / 24;
+            
+            timeHandle.style.left = `calc(${percentage * 100}% - 12px)`;
+            timeDisplay.textContent = `${Math.floor(currentTime).toString().padStart(2, '0')}:${Math.floor((currentTime % 1) * 60).toString().padStart(2, '0')}`;
+            
+            applyTimeFilter(currentTime);
+        }
+
+        // "喵？"效果
+        function lightsOut() {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 150;
+                pointer-events: none;
+            `;
+            document.body.appendChild(overlay);
+            
+            meowText.style.animation = 'meowAppear 0.3s ease forwards';
+            
+            setTimeout(() => {
+                meowText.style.animation = 'meowDisappear 0.5s ease forwards';
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.5s ease';
+                
+                setTimeout(() => {
+                    document.body.removeChild(overlay);
+                }, 500);
+            }, 2000);
+        }
+
+        // 爱心效果
+        function showHeart() {
+            heartIcon.style.animation = 'heartAppear 0.3s ease forwards';
+            
+            setTimeout(() => {
+                heartIcon.style.animation = 'heartDisappear 0.5s ease forwards';
+            }, 1500);
+        }
+
+        // 视频点击事件
+        video.addEventListener('click', function() {
+            if (isMainVideo) {
+                video.src = 'yawning.mp4';
+                video.loop = false;
+                video.play();
+                isMainVideo = false;
+                
+                video.addEventListener('ended', function() {
+                    video.src = 'lying.mp4';
+                    video.loop = true;
+                    video.play();
+                    isMainVideo = true;
+                }, { once: true });
+            }
+        });
+
+        // 键盘事件
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'c' || e.key === 'C') {
+                lightsOut();
+            } else if (e.key === 'm' || e.key === 'M') {
+                showHeart();
+            } else if (e.key === 'v' || e.key === 'V') {
+                console.log('语音功能需要HTTPS环境');
+            }
+        });
+
+        // 时间滑块交互
+        let isDragging = false;
+
+        timeSlider.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            updateTimeFromMouse(e);
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                updateTimeFromMouse(e);
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+
+        function updateTimeFromMouse(e) {
+            const rect = timeSlider.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = Math.max(0, Math.min(1, x / rect.width));
+            const newTime = percentage * 24;
+            setTime(newTime);
+        }
+
+        // 移动端支持
+        function initMobileSupport() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                console.log('检测到移动设备，启用移动端适配');
+                
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(e => {
+                        console.log('无法锁定横屏:', e);
+                    });
+                }
+                
+                document.addEventListener('gesturestart', function(e) {
+                    e.preventDefault();
+                });
+                
+                video.setAttribute('playsinline', true);
+                video.setAttribute('webkit-playsinline', true);
+            }
+        }
+
+        // 移动端触摸优化
+        function optimizeTouchEvents() {
+            let touchStartX, touchStartY;
+            let isTouchDragging = false;
+            
+            timeSlider.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                
+                const rect = timeSlider.getBoundingClientRect();
+                const x = touchStartX - rect.left;
+                const percentage = Math.max(0, Math.min(1, x / (timeSlider.offsetWidth - 24)));
+                const newTime = percentage * 24;
+                setTime(newTime);
+                
+                isTouchDragging = true;
+            });
+            
+            document.addEventListener('touchmove', function(e) {
+                if (!isTouchDragging) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                const rect = timeSlider.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const percentage = Math.max(0, Math.min(1, x / (timeSlider.offsetWidth - 24)));
+                const newTime = percentage * 24;
+                setTime(newTime);
+            }, { passive: false });
+            
+            document.addEventListener('touchend', function() {
+                isTouchDragging = false;
+            });
+            
+            // 移动端显示控制器的手势
+            let tapCount = 0;
+            video.addEventListener('touchstart', function(e) {
+                tapCount++;
+                if (tapCount === 1) {
+                    setTimeout(() => {
+                        if (tapCount === 1) {
+                            // 单击 - 切换视频
+                            if (isMainVideo) {
+                                video.src = 'yawning.mp4';
+                                video.loop = false;
+                                video.play();
+                                isMainVideo = false;
+                                
+                                video.addEventListener('ended', function() {
+                                    video.src = 'lying.mp4';
+                                    video.loop = true;
+                                    video.play();
+                                    isMainVideo = true;
+                                }, { once: true });
+                            }
+                        } else if (tapCount === 2) {
+                            // 双击 - 显示/隐藏时间控制器
+                            isControllerVisible = !isControllerVisible;
+                            timeController.classList.toggle('show', isControllerVisible);
+                        }
+                        tapCount = 0;
+                    }, 300);
+                }
+            });
+        }
+
+        // 初始化
+        const now = new Date();
+        const realTime = now.getHours() + now.getMinutes() / 60;
+        setTime(realTime);
+        
+        initMobileSupport();
+        optimizeTouchEvents();
+        
+        console.log('🐱 考拉纪念网站已加载');
+        console.log('移动端：单击切换视频，双击显示控制器');
+        console.log('桌面端：C键触发"喵？"，M键显示爱心');
+    </script>
+</body>
+</html>
